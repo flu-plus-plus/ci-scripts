@@ -8,17 +8,17 @@ import subprocess
 import sys
 import urllib
 
-def is_library_built(boost_root, library, version, address_model):
+def is_library_built(boost_root, library, version, stagedir):
     if os.name == 'nt':
         version_stub = version[0:version.rindex('.')].replace('.', '_')
         filename = 'libboost_{}-vc140-mt-s-{}.lib'.format(library, version_stub)
     else:
         filename = 'libboost_{}.a'.format(library)
 
-    return os.path.exists(os.path.join(boost_root, 'stage', address_model, 'lib', filename))
+    return os.path.exists(os.path.join(boost_root, stagedir, 'lib', filename))
 
-def are_libraries_built(boost_root, libraries, version, address_model):
-    return all(map(lambda library: is_library_built(boost_root, library, version, address_model), libraries))
+def are_libraries_built(boost_root, libraries, version, stagedir):
+    return all(map(lambda library: is_library_built(boost_root, library, version, stagedir), libraries))
 
 def get_boost_archive_name(version):
     underscored_version = version.replace('.', '_')
@@ -58,7 +58,7 @@ def download_boost(version, destination_path):
 
     urllib.urlretrieve(get_boost_url(version), destination_path)
 
-def build_boost(boost_root, address_model, toolchain, libraries):
+def build_boost(boost_root, address_model, toolchain, stagedir, libraries):
     print('Building Boost libraries {} at {}...'.format(libraries, boost_root))
 
     if os.name == 'nt':
@@ -89,7 +89,7 @@ def build_boost(boost_root, address_model, toolchain, libraries):
         'variant=release',
         'address-model={}'.format(address_model),
         'define=NO_COMPRESSION=1',
-        '--stagedir={}'.format(os.path.join('stage', address_model))
+        '--stagedir={}'.format(stagedir)
     ] + os_arguments + [ '--with-{}'.format(library) for library in libraries ]
 
     print('Running {}...'.format(' '.join(b2_command)))
@@ -101,18 +101,24 @@ if __name__ == "__main__":
     parser.add_argument('--boost-version', '-b', required = True)
     parser.add_argument('--address-model', '-a', required = True)
     parser.add_argument('--toolchain', '-t', required = True)
+    parser.add_argument('--stagedir', '-s', required = False, default=None)
     parser.add_argument('libraries', nargs = '+', metavar = 'library')
 
     arguments = parser.parse_args()
 
+    if arguments.stagedir:
+        stagedir = arguments.stagedir
+    else:
+        stagedir = os.path.join('stage', arguments.address_model)
+
     boost_archive_path = os.path.join(arguments.directory, get_boost_archive_name(arguments.boost_version))
     boost_folder_path = os.path.join(arguments.directory, get_extracted_folder_name(boost_archive_path))
 
-    if are_libraries_built(boost_folder_path, arguments.libraries, arguments.boost_version, arguments.address_model):
+    if are_libraries_built(boost_folder_path, arguments.libraries, arguments.boost_version, stagedir):
         sys.exit(0)
 
     download_boost(arguments.boost_version, boost_archive_path)
 
     extract_archive(boost_archive_path)
 
-    build_boost(boost_folder_path, arguments.address_model, arguments.toolchain, arguments.libraries)
+    build_boost(boost_folder_path, arguments.address_model, arguments.toolchain, stagedir, arguments.libraries)
