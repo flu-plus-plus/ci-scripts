@@ -58,19 +58,19 @@ def download_boost(version, destination_path):
 
     urllib.urlretrieve(get_boost_url(version), destination_path)
 
-def build_boost(boost_root, address_model, libraries):
+def build_boost(boost_root, address_model, toolchain, libraries):
     print('Building Boost libraries {} at {}...'.format(libraries, boost_root))
 
     if os.name == 'nt':
         extension = '.bat'
-        toolset = 'msvc'
+        toolset = toolchain
         runtime_link = 'static,shared'
         os_arguments = [
             'threadapi=win32'
         ]
     else:
         extension = '.sh'
-        toolset = 'gcc-5'
+        toolset = toolchain
         runtime_link = 'shared'
         os_arguments = [
             'cxxflags=-std=c++14 -fPIC',
@@ -100,6 +100,7 @@ if __name__ == "__main__":
     parser.add_argument('--directory', '-d', required = True)
     parser.add_argument('--boost-version', '-b', required = True)
     parser.add_argument('--address-model', '-a', required = True)
+    parser.add_argument('--toolchain', '-t', required = True)
     parser.add_argument('libraries', nargs = '+', metavar = 'library')
 
     arguments = parser.parse_args()
@@ -114,4 +115,4 @@ if __name__ == "__main__":
 
     extract_archive(boost_archive_path)
 
-    build_boost(boost_folder_path, arguments.address_model, arguments.libraries)
+    build_boost(boost_folder_path, arguments.address_model, arguments.toolchain, arguments.libraries)
